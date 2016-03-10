@@ -69,7 +69,7 @@ class PreferencesDialog:
         notebook.append_page(self.__locations_page(
             LOCATIONS_WHITELIST), Gtk.Label(label=_("Whitelist")))
 
-        self.dialog.vbox.pack_start(notebook, True, True, 0)
+        self.dialog.get_content_area().pack_start(notebook, True, True, 0)
         self.dialog.add_button(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
 
     def __toggle_callback(self, cell, path):
@@ -238,7 +238,7 @@ class PreferencesDialog:
         button_remove = Gtk.Button.new_with_label(label=_p('button', 'Remove'))
         button_remove.connect("clicked", remove_drive_cb)
 
-        button_box = Gtk.HButtonBox()
+        button_box = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
         button_box.set_layout(Gtk.ButtonBoxStyle.START)
         button_box.pack_start(button_add, True, True, 0)
         button_box.pack_start(button_remove, True, True, 0)
@@ -454,7 +454,7 @@ class PreferencesDialog:
         elif LOCATIONS_CUSTOM == page_type:
             button_remove.connect("clicked", remove_custom_path_cb)
 
-        button_box = Gtk.HButtonBox()
+        button_box = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
         button_box.set_layout(Gtk.ButtonBoxStyle.START)
         button_box.pack_start(button_add_file, True, True, 0)
         button_box.pack_start(button_add_folder, True, True, 0)
