@@ -30,10 +30,11 @@ from bleachbit import Cleaner, Windows
 from bleachbit.Action import Delete, Winreg
 from bleachbit import _, FSE, expandvars
 
+import glob
 import logging
 import os
-import glob
 import re
+import time
 from xml.dom.minidom import parseString
 
 logger = logging.getLogger(__name__)
@@ -148,11 +149,16 @@ class Winapp:
         self.parser = bleachbit.RawConfigParser()
         self.parser.read(pathname)
         for section in self.parser.sections():
+            start_time = time.time()
             try:
                 self.handle_section(section)
             except Exception:
                 self.errors += 1
                 logger.exception('parsing error in section %s', section)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            if elapsed_time > 3:
+                logger.warning('Adding Winapp2 section {} took {:0.2f} seconds'.format(section, elapsed_time))
 
     def add_section(self, cleaner_id, name):
         """Add a section (cleaners)"""
@@ -387,6 +393,7 @@ def list_winapp_files():
 
 def load_cleaners():
     """Scan for winapp2.ini files and load them"""
+    start_time = time.time()
     for pathname in list_winapp_files():
         try:
             inicleaner = Winapp(pathname)
@@ -395,3 +402,10 @@ def load_cleaners():
         else:
             for cleaner in inicleaner.get_cleaners():
                 Cleaner.backends[cleaner.id] = cleaner
+    end_time = time.time()
+    elapsed_seconds = end_time - start_time
+    msg = 'Winapp.load_cleaners() took {:0.1f} seconds '.format(elapsed_seconds)
+    if elapsed_seconds > 10:
+        logger.warning(msg)
+    else:
+        logger.debug(msg)
