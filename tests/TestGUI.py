@@ -23,12 +23,25 @@
 Test case for module GUI
 """
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
+
+import os
+import unittest
+
+try:
+    import gtk
+    HAVE_GTK = True
+except ImportError:
+    HAVE_GTK = False
 
 from tests import common
-from bleachbit.GUI import TreeInfoModel, GUI
+from bleachbit.GUI import GUI
+
+IS_APPVEYOR = os.getenv('APPVEYOR') is not None
 
 
+@unittest.skipUnless(HAVE_GTK, 'requires GTK+ module')
+@unittest.skipIf(IS_APPVEYOR, 'test not yet supported on AppVeyor')
 class GUITestCase(common.BleachbitTestCase):
     """Test case for module GUI"""
 
