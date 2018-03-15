@@ -30,12 +30,12 @@ import unittest
 
 try:
     import gtk
+    from bleachbit.GUI import GUI
     HAVE_GTK = True
 except ImportError:
     HAVE_GTK = False
 
 from tests import common
-from bleachbit.GUI import GUI
 
 IS_APPVEYOR = os.getenv('APPVEYOR') is not None
 
