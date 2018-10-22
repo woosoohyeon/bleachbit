@@ -135,11 +135,6 @@ def run_cmd(cmd):
         logger.error(stderr)
 
 
-def check_file_for_string(filename, string):
-    with open(filename) as fin:
-        return string in fin.read()
-
-
 def sign_code(filename):
     if os.path.exists('CodeSign.bat'):
         logger.info('Signing code: %s' % filename)
@@ -384,8 +379,10 @@ def upx():
 def delete_linux_only():
     logger.info('Checking for Linux-only cleaners')
     files = recursive_glob('dist/share/cleaners/', ['*.xml'])
-    for f in files:
-        if check_file_for_string(f, 'os="linux"'):
+    for fn in files:
+        from bleachbit.CleanerML import CleanerML
+        cml = CleanerML(f)
+        if not cml.get_cleaner().is_usable():
             logger.warning('delete ' + f)
             os.remove(f)
 
