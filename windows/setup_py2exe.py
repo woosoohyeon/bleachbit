@@ -381,10 +381,10 @@ def delete_linux_only():
     files = recursive_glob('dist/share/cleaners/', ['*.xml'])
     for fn in files:
         from bleachbit.CleanerML import CleanerML
-        cml = CleanerML(f)
+        cml = CleanerML(fn)
         if not cml.get_cleaner().is_usable():
-            logger.warning('delete ' + f)
-            os.remove(f)
+            logger.warning('Deleting cleaner not usable on this OS: ' + fn)
+            os.remove(fn)
 
 
 @count_size_improvement
