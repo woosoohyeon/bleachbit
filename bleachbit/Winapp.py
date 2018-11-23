@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 # TRANSLATORS: This is cleaner name for cleaners imported from winapp2.ini
+# TRANSLATORs: 이것은 winapp2.ini에서 가져온 클리너를 위한 더 깨끗한 이름입니다.
 langsecref_map = {'3021': ('winapp2_applications', _('Applications')),
                   # TRANSLATORS: This is cleaner name for cleaners imported
                   # from winapp2.ini
@@ -62,12 +63,12 @@ langsecref_map = {'3021': ('winapp2_applications', _('Applications')),
                   # Section=Games (technically not langsecref)
                   'Games': ('winapp2_games', _('Games'))}
 
-
+#XML 엔티티를 가벼운 방식으로 제거하는 함수
 def xml_escape(s):
     """Lightweight way to escape XML entities"""
     return s.replace('&', '&amp;').replace('"', '&quot;')
 
-
+#섹션 이름을 적절한 옵션 이름으로 표준화하는 함수
 def section2option(s):
     """Normalize section name to appropriate option name"""
     ret = re.sub(r'[^a-z0-9]', '_', s.lower())
@@ -75,44 +76,60 @@ def section2option(s):
     ret = re.sub(r'(^_|_$)', '', ret)
     return ret
 
-
+#탐지기가 와 호환되는지의 여부와 현재 운영 체제 또는 제공된 모의 버전을 사용하는지 판단하는 함수
 def detectos(required_ver, mock=False):
     """Returns boolean whether the detectos is compatible with the
     current operating system, or the mock version, if given."""
     # Do not compare as string because Windows 10 (build 10.0) comes after
-    # Windows 8.1 (build 6.3).
+    # Windows 8.1 (build 6.3)
     assert isinstance(required_ver, (str, unicode))
+    #현재의 os를 초기화 한다.
     current_os = (mock if mock else Windows.parse_windows_build())
+    #required_ver에 required_ver을 붙인다.
     required_ver = required_ver.strip()
+    #만약 '|'가 required_ver라면 
     if '|' in required_ver:
         # Format of min|max
+        # req_min에 required_ver[0]에 '|'붙인 것을 초기화한다.
         req_min = required_ver.split('|')[0]
+        # req_max에 required_ver[1]에 '|'붙인 것을 초기화한다.
         req_max = required_ver.split('|')[1]
+        
+        #비교를 통해 false와 true을 리턴한다.
         if req_min and current_os < Windows.parse_windows_build(req_min):
             return False
         if req_max and current_os > Windows.parse_windows_build(req_max):
             return False
         return True
     else:
+        #버전이 호환된다면 현재의 os를 반환한다.
         # Exact version
         return Windows.parse_windows_build(required_ver) == current_os
 
-
+#특수 Winapp2.ini 규칙을 사용하여 환경 변수 확장하는 함수 
 def winapp_expand_vars(pathname):
     """Expand environment variables using special Winapp2.ini rules"""
     # This is the regular expansion
+    # expand1변수 초기화 
     expand1 = expandvars(pathname)
     # Winapp2.ini expands %ProgramFiles% to %ProgramW6432%, etc.
+    #subs초기화 
     subs = (('ProgramFiles', 'ProgramW6432'),
             ('CommonProgramFiles', 'CommonProgramW6432'))
+    
+    #subs길이만큼 반복 
     for (sub_orig, sub_repl) in subs:
         pattern = re.compile('%{}%'.format(sub_orig), flags=re.IGNORECASE)
+        #pattern이 pathname와 같다면 
         if pattern.match(pathname):
+            #expand2초기화 
             expand2 = pattern.sub('%{}%'.format(sub_repl), pathname)
+            #expand1, expandvars반환
             return expand1, expandvars(expand2)
+     #반환 
     return expand1,
 
-
+#DetectFile#=에 대한 경로가 있는지 확인하느 함수 
 def detect_file(pathname):
     """Check whether a path exists for DetectFile#="""
     for expanded in winapp_expand_vars(pathname):
@@ -120,7 +137,7 @@ def detect_file(pathname):
             return True
     return False
 
-
+#SpecialDetect= 소프트웨어가 존재하는지 확인하는 함수 
 def special_detect(code):
     """Check whether the SpecialDetect== software exists"""
     # The last two are used only for testing
@@ -136,7 +153,7 @@ def special_detect(code):
         logger.error('Unknown SpecialDetect=%s', code)
     return False
 
-
+#끝이 없는 원본과 동일한지 판단하는 함수
 def fnmatch_translate(pattern):
     """Same as the original without the end"""
     import fnmatch
@@ -147,11 +164,12 @@ def fnmatch_translate(pattern):
         return ret[:-7]
     return ret
 
-
+#Winapp2.ini 스타일 파일에서 클리너 생성하는 클래스 
 class Winapp:
 
     """Create cleaners from a Winapp2.ini-style file"""
-
+    
+    #Winapp2.ini 스타일 파일에서 클리너 생성하는 함수
     def __init__(self, pathname):
         """Create cleaners from a Winapp2.ini-style file"""
 
@@ -171,7 +189,8 @@ class Winapp:
             except Exception:
                 self.errors += 1
                 logger.exception('parsing error in section %s', section)
-
+    
+    #섹션 추가(클리너)함수 
     def add_section(self, cleaner_id, name):
         """Add a section (cleaners)"""
         self.cleaner_ids.append(cleaner_id)
@@ -182,7 +201,8 @@ class Winapp:
         # The detect() function in this module effectively does what
         # auto_hide() does, so this avoids redundant, slow processing.
         self.cleaners[cleaner_id].auto_hide = lambda: False
-
+        
+    #Langsecref(또는 섹션 이름)가 있으면 내부 BleachBit 클리너 ID를 찾는 함수
     def section_to_cleanerid(self, langsecref):
         """Given a langsecref (or section name), find the internal
         BleachBit cleaner ID."""
@@ -195,7 +215,9 @@ class Winapp:
             # never seen before
             self.add_section(cleanerid, langsecref)
         return cleanerid
-
+      
+      
+    #하나의 제외키를 클리너ML nwholeregex로 변환하는 함수
     def excludekey_to_nwholeregex(self, excludekey):
         r"""Translate one ExcludeKey to CleanerML nwholeregex
 
@@ -211,31 +233,36 @@ class Winapp:
         parts[0] = parts[0].upper()
         if parts[0] == 'REG':
             raise NotImplementedError('REG not supported in ExcludeKey')
-
+            
+        #마지막 부분에 파일 이름이 있다.
         # the last part contains the filename(s)
         files = None
         files_regex = ''
         if len(parts) == 3:
             files = parts[2].split(';')
             if len(files) == 1:
+                ## *.* 또는 *.log와 같은 하나의 파일 패턴
                 # one file pattern like *.* or *.log
                 files_regex = fnmatch_translate(files[0])
                 if files_regex == '*.*':
                     files = None
             elif len(files) > 1:
+              # *.log.*bak와 같은 여러 개의 파일 패턴
                 # multiple file patterns like *.log;*.bak
                 files_regex = '(%s)' % '|'.join(
                     [fnmatch_translate(f) for f in files])
-
+        # 중간 부분에 파일이 있다.
         # the middle part contains the file
         regexes = []
         for expanded in winapp_expand_vars(parts[1]):
             regex = None
             if not files:
+                #세 번째 부분은 없으므로 폴더이거나 파일이 직접 지정되기도 함.
                 # There is no third part, so this is either just a folder,
                 # or sometimes the file is specified directly.
                 regex = fnmatch_translate(expanded)
             if files:
+                # 이 트리 또는 하위 폴더에 있는 하나 이상의 파일 형식과 일치
                 # match one or more file types, directly in this tree or in any
                 # sub folder
                 regex = '%s.*%s' % (
@@ -246,7 +273,7 @@ class Winapp:
             return regexes[0]
         else:
             return '(%s)' % '|'.join(regexes)
-
+    #섹션을 표시할지 여부 확인하는 함수 
     def detect(self, section):
         """Check whether to show the section
 
@@ -281,11 +308,14 @@ class Winapp:
                     return True
         return not any_detect_option
 
+     #섹션을 다루는 함수 
     def handle_section(self, section):
         """Parse a section"""
+        #섹션이 활성화되었는지 확인한다.
         # check whether the section is active (i.e., whether it will be shown)
         if not self.detect(section):
             return
+        # 제외키는 파일, 경로 또는 레지스트리 키를 무시.
         # excludekeys ignores a file, path, or registry key
         excludekeys = []
         for option in self.parser.options(section):
@@ -294,6 +324,7 @@ class Winapp:
                     self.excludekey_to_nwholeregex(self.parser.get(section, option).decode(FSE)))
         # there are two ways to specify sections: langsecref= and section=
         if self.parser.has_option(section, 'langsecref'):
+            #Langsecref 번호가 알려져 있는지 확인합니다.
             # verify the langsecref number is known
             # langsecref_num is 3021, games, etc.
             langsecref_num = self.parser.get(section, 'langsecref').decode(FSE)
@@ -303,6 +334,7 @@ class Winapp:
             logger.error(
                 'neither option LangSecRef nor Section found in section %s', section)
             return
+        #BleachBit 내부 클리너 ID를 찾는다.
         # find the BleachBit internal cleaner ID
         lid = self.section_to_cleanerid(langsecref_num)
         self.cleaners[lid].add_option(
@@ -324,9 +356,10 @@ class Winapp:
                 logger.warning(
                     'unknown option %s in section %s', option, section)
                 return
-
+    #구문 분석된 파일 키를 작업 공급자로 변경하는 함수 
     def __make_file_provider(self, dirname, filename, recurse, removeself, excludekeys):
         """Change parsed FileKey to action provider"""
+        #조건문을 통해 원하는 파일명을 찾는다.
         regex = ''
         if recurse:
             search = 'walk.files'
@@ -346,24 +379,27 @@ class Winapp:
                 search = 'file'
         excludekeysxml = ''
         if excludekeys:
+          #key의 길이가 1보다 크다면 
             if len(excludekeys) > 1:
                 # multiple
                 exclude_str = '(%s)' % '|'.join(excludekeys)
             else:
+              #키의 일이가 하나라면 
                 # just one
                 exclude_str = excludekeys[0]
             excludekeysxml = 'nwholeregex="%s"' % xml_escape(exclude_str)
         action_str = u'<option command="delete" search="%s" path="%s" %s %s/>' % \
                      (search, xml_escape(path), regex, excludekeysxml)
+        #삭제한다.
         yield Delete(parseString(action_str).childNodes[0])
         if removeself:
             action_str = u'<option command="delete" search="file" path="%s"/>' % \
                          (xml_escape(dirname))
             yield Delete(parseString(action_str).childNodes[0])
-
+    #FileKey# 옵션을 구문 분석하는 함수 
     def handle_filekey(self, lid, ini_section, ini_option, excludekeys):
         """Parse a FileKey# option.
-
+        #섹션이 [응용 프로그램 이름]이고 옵션이 FileKey#이다.
         Section is [Application Name] and option is the FileKey#"""
         elements = self.parser.get(
             ini_section, ini_option).decode(FSE).strip().split('|')
@@ -388,7 +424,7 @@ class Winapp:
                 for provider in self.__make_file_provider(dirname, filename, recurse, removeself, excludekeys):
                     self.cleaners[lid].add_action(
                         section2option(ini_section), provider)
-
+    #RegKey# 옵션을 구문 분석하는 함수
     def handle_regkey(self, lid, ini_section, ini_option):
         """Parse a RegKey# option"""
         elements = self.parser.get(
@@ -400,14 +436,15 @@ class Winapp:
         action_str = '<option command="winreg" path="%s" %s/>' % (path, name)
         provider = Winreg(parseString(action_str).childNodes[0])
         self.cleaners[lid].add_action(section2option(ini_section), provider)
-
+        
+    #생성된 클리너를 반환하는 함수 
     def get_cleaners(self):
         """Return the created cleaners"""
         for cleaner_id in self.cleaner_ids:
             if self.cleaners[cleaner_id].is_usable():
                 yield self.cleaners[cleaner_id]
 
-
+#winapp2.ini 파일 나열하는 함수
 def list_winapp_files():
     """List winapp2.ini files"""
     for dirname in (bleachbit.personal_cleaners_dir, bleachbit.system_cleaners_dir):
@@ -415,7 +452,7 @@ def list_winapp_files():
         if os.path.exists(fname):
             yield fname
 
-
+#winapp2.ini 파일 검색 및 로드하는 함수 
 def load_cleaners():
     """Scan for winapp2.ini files and load them"""
     for pathname in list_winapp_files():
