@@ -34,11 +34,12 @@ import sys
 
 logger = logging.getLogger(__name__)
 
-
+#삭제하는 명령을 미리보기 또는 삭제 작업 수행하는 클래스
 class Worker:
 
     """Perform the preview or delete operations"""
-
+    #__init__함수를 이용하여 ui설정
+    #worker객체를 생성하는 함수 (ui관여)
     def __init__(self, ui, really_delete, operations):
         """Create a Worker
 
@@ -65,6 +66,7 @@ class Worker:
         if 0 == len(self.operations):
             raise RuntimeError("No work to do")
 
+    #예외를 보여주는 함수 
     def print_exception(self, operation):
         """Display exception"""
         # TRANSLATORS: This indicates an error.  The special keyword
@@ -76,6 +78,7 @@ class Worker:
         logger.error(err, exc_info=True)
         self.total_errors += 1
 
+    #삭제명령 실행 또는 미리 보기를 수행하는 함수
     def execute(self, cmd, operation_option):
         """Execute or preview the command"""
         ret = None
@@ -124,7 +127,7 @@ class Worker:
                 # the label may be a hidden operation
                 # (e.g., win.shell.change.notify)
                 self.ui.append_text(line)
-
+    #단일 정리작업을 수행하는 함수 
     def clean_operation(self, operation):
         """Perform a single cleaning operation"""
         operation_options = self.operations[operation]
@@ -137,6 +140,7 @@ class Worker:
 
         if self.really_delete and backends[operation].is_running():
             # TRANSLATORS: %s expands to a name such as 'Firefox' or 'System'.
+            # TRANSLATORs: %s은(는) 'Firefox' 또는 'System'과 같은 이름으로 확장
             err = _("%s cannot be cleaned because it is currently running.  Close it, and try again.") \
                 % backends[operation].get_name()
             self.ui.append_text(err + "\n", 'error')
@@ -155,6 +159,8 @@ class Worker:
                     if True == ret:
                         # Return control to PyGTK idle loop to keep
                         # it responding allow the user to abort
+                        # PyGTK 유휴 루프에 컨트롤을 되돌려 보관
+                        # 응답 중 사용자가 중단하도록 허용
                         self.yield_time = time.time()
                         yield True
                 if time.time() - self.yield_time > 0.25:
@@ -167,6 +173,7 @@ class Worker:
             total_size += self.size
 
             # deep scan
+            # deep scan
             for ds in backends[operation].get_deep_scan(option_id):
                 if '' == ds['path']:
                     ds['path'] = expanduser('~')
@@ -177,7 +184,8 @@ class Worker:
                     self.deepscans[ds['path']] = []
                 self.deepscans[ds['path']].append(ds)
         self.ui.update_item_size(operation, -1, total_size)
-
+        
+    #지연된 작업을 실행하는 함수 
     def run_delayed_op(self, operation, option_id):
         """Run one delayed operation"""
         self.ui.update_progress_bar(0.0)
@@ -193,6 +201,7 @@ class Worker:
             for ret in self.execute(cmd, '%s.%s' % (operation, option_id)):
                 if isinstance(ret, tuple):
                     # Display progress (for free disk space)
+                    # 진행 상황을 표시(사용 가능한 디스크 공간)
                     phase = ret[
                         0]  # 1=wipe free disk space, 2=wipe inodes, 3=clean up inodes files
                     percent_done = ret[1]
@@ -214,8 +223,10 @@ class Worker:
                 if True == ret or isinstance(ret, tuple):
                     # Return control to PyGTK idle loop to keep
                     # it responding and allow the user to abort.
+                    # PyGTK 유휴 루프에 컨트롤을 되돌려 보관
+                    # 응답하고 사용자가 중단하도록 한다
                     yield True
-
+    #정리프로세스 수행함수 (1. General cleaning 2. Deep scan 3. Memory 4. Free disk space""")
     def run(self):
         """Perform the main cleaning process which has these phases
         1. General cleaning
@@ -240,6 +251,7 @@ class Worker:
                     self.delayed_ops.append(new_op)
 
         # standard operations
+        #표준작업
         import warnings
         with warnings.catch_warnings(record=True) as ws:
             # This warning system allows general warnings. Duplicate will
@@ -254,11 +266,13 @@ class Worker:
                 logger.warning(w.message)
 
         # run deep scan
+        #deepscan수행
         if self.deepscans:
             for dummy in self.run_deep_scan():
                 yield dummy
 
         # delayed operations
+        #지연된 작업 수행
         for op in sorted(self.delayed_ops):
             operation = op[1].keys()[0]
             for option_id in op[1].values()[0]:
@@ -267,6 +281,7 @@ class Worker:
                     yield True
 
         # print final stats
+        #최종상태 
         bytes_delete = FileUtilities.bytes_to_human(self.total_bytes)
 
         if self.really_delete:
@@ -299,7 +314,7 @@ class Worker:
         self.ui.worker_done(self, self.really_delete)
 
         yield False
-
+    #deep scan을 수행하는 함수 
     def run_deep_scan(self):
         """Run deep scans"""
         logger.debug(' deepscans=%s' % self.deepscans)
@@ -323,7 +338,7 @@ class Worker:
             cmd = Command.Delete(path)
             for ret in self.execute(cmd, 'deepscan'):
                 yield True
-
+    #작업 세트(일반, 메모리, 사용 가능한 디스크 공간) 실행하는 함수 
     def run_operations(self, my_operations):
         """Run a set of operations (general, memory, free disk space)"""
         count = 0
